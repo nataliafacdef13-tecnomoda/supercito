@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<!-- Súper Barrio - Sistema de stock. Estructura, estilos y lógica en un solo archivo -->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Súper Barrio - Control de stock</title>
+
+  <!-- App instalable: manifest, color de la barra del navegador e ícono para iPhone -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#D99A00">
+  <link rel="apple-touch-icon" href="icono-192.png">
+
+  <!-- Estilos integrados -->
+  <style>
+/* ==========================================================
+   Súper Barrio - Estilos del sistema de stock
+   Mobile first: base para celular, ajustes desde 768 px
+   ========================================================== */
+
+/* 1. TIPOGRAFÍAS (Google Fonts) */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap");
+
+/* 2. VARIABLES DE COLOR Y MEDIDAS */
+:root {
+  /* Color principal (amarillo mostaza) */
+  --color-principal: #D99A00;
+  --color-principal-oscuro: #B07C00;
+  --color-principal-suave: #FFF4D6;
+
+  /* Colores de estado del stock */
+  --color-normal: #2E9E5B;       /* verde: stock normal */
+  --color-bajo: #F28C28;         /* naranja: bajo el mínimo */
+  --color-sin-stock: #D93025;    /* rojo: sin stock */
+
+  /* Fondos, texto y bordes */
+  --color-fondo: #F5F6F7;        /* gris muy claro */
+  --color-tarjeta: #FFFFFF;
+  --color-texto: #1F2933;
+  --color-texto-suave: #6B7280;
+  --color-borde: #E5E7EB;
+
+  /* Sombras, bordes redondeados y tipografías */
+  --sombra-suave: 0 2px 8px rgba(31, 41, 51, 0.08);
+  --sombra-elevada: 0 6px 16px rgba(31, 41, 51, 0.16);
+  --radio: 14px;
+  --fuente-titulos: "Poppins", system-ui, sans-serif;
+  --fuente-texto: "Inter", system-ui, sans-serif;
+}
+
+/* 3. BASE: reinicio y estilos generales */
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/* Hace que el atributo "hidden" siempre oculte (lo usa el menú) */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  font-family: var(--fuente-texto);
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+h1, h2, h3 {
+  font-family: var(--fuente-titulos);
+}
+
+h2 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+/* 4. ENCABEZADO: nombre del sistema y botones de datos */
+#encabezado {
+  background: var(--color-principal);
+  color: var(--color-texto);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: var(--sombra-suave);
+}
+
+#encabezado h1 {
+  font-size: 1.5rem;
+}
+
+#encabezado h1::before {
+  content: "🛒 ";
+}
+
+#acciones-datos {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* 5. BOTONES: estilo general con hover (color + elevación) */
+button {
+  font-family: var(--fuente-texto);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  min-height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-principal);
+  color: var(--color-texto);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+  background: var(--color-principal-oscuro);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-elevada);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Botones de exportar/importar: blancos sobre el encabezado, con emojis */
+#acciones-datos button {
+  background: var(--color-tarjeta);
+}
+
+#acciones-datos button:hover {
+  background: var(--color-texto);
+  color: #FFFFFF;
+}
+
+#btn-exportar::before { content: "📤 "; }
+#btn-importar::before { content: "📥 "; }
+
+/* Botón para acciones peligrosas (ej: eliminar) */
+.boton-peligro {
+  background: var(--color-sin-stock);
+  color: #FFFFFF;
+}
+
+.boton-peligro:hover {
+  background: #A8231A;
+}
+
+/* Botón secundario (ej: cancelar edición) */
+.boton-secundario {
+  background: var(--color-fondo);
+  border: 1px solid var(--color-borde);
+}
+
+/* 6. MENÚ PRINCIPAL: pestañas con scroll horizontal en celular */
+#menu {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-tarjeta);
+  border-bottom: 1px solid var(--color-borde);
+  overflow-x: auto;
+}
+
+#menu button {
+  background: var(--color-fondo);
+  white-space: nowrap;
+}
+
+/* Emojis de cada opción del menú */
+#menu button[data-seccion="productos"]::before   { content: "📦 "; }
+#menu button[data-seccion="movimientos"]::before { content: "🔄 "; }
+#menu button[data-seccion="alertas"]::before     { content: "🔔 "; }
+#menu button[data-seccion="categorias"]::before  { content: "🏷️ "; }
+
+/* Opción seleccionada (la clase "activo" la agregará JS) */
+#menu button.activo {
+  background: var(--color-principal);
+}
+
+/* Contador de alertas: círculo rojo con número */
+#contador-alertas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.3rem;
+  margin-left: 0.25rem;
+  border-radius: 50%;
+  background: var(--color-sin-stock);
+  color: #FFFFFF;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* 7. CONTENIDO PRINCIPAL: centrado y con ancho máximo */
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* 8. FORMULARIOS COMO TARJETAS (1 columna en celular) */
+form,
+#filtros-productos,
+#filtros-movimientos {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+/* Los campos dentro de una grilla pueden achicarse en vez de empujar el ancho */
+form > *,
+#filtros-productos > *,
+#filtros-movimientos > * {
+  min-width: 0;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-texto-suave);
+}
+
+input,
+select,
+textarea {
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: var(--color-texto);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--color-principal);
+  border-color: var(--color-principal);
+}
+
+/* Info del producto en el formulario de movimientos */
+#info-producto-movimiento {
+  min-height: 1.2rem;
+  font-weight: 500;
+  color: var(--color-texto);
+}
+
+#info-producto-movimiento.info-no-encontrado {
+  color: var(--color-sin-stock);
+}
+
+/* 9. TABLAS: tarjeta con scroll horizontal en celular */
+table {
+  display: block;
+  overflow-x: auto;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+th {
+  font-family: var(--fuente-titulos);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--color-principal-suave);
+}
+
+tbody tr:hover {
+  background: var(--color-fondo);
+}
+
+/* 10. LISTAS (alertas y categorías): cada elemento es una tarjeta */
+ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+li {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+/* Alertas: borde de color según la gravedad */
+li.alerta-bajo      { border-left: 6px solid var(--color-bajo); }
+li.alerta-sin-stock { border-left: 6px solid var(--color-sin-stock); }
+
+/* Contenido de cada alerta */
+.alerta-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.alerta-info small {
+  color: var(--color-texto-suave);
+}
+
+.alerta-detalle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.alerta-pedido {
+  font-weight: 600;
+}
+
+/* 11. INDICADORES DE ESTADO DEL STOCK (se aplican con clases desde JS) */
+.estado {
+  font-weight: 600;
+}
+
+.estado-normal    { color: var(--color-normal); }
+.estado-bajo      { color: var(--color-bajo); }
+.estado-sin-stock { color: var(--color-sin-stock); }
+
+.estado-normal::before    { content: "🟢 "; }
+.estado-bajo::before      { content: "🟠 "; }
+.estado-sin-stock::before { content: "🔴 "; }
+
+/* 12. ESCRITORIO / TABLET: desde 768 px, dos columnas */
+@media (min-width: 768px) {
+  #encabezado {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+  }
+
+  #menu {
+    padding: 0.75rem 2rem;
+  }
+
+  main {
+    padding: 1.5rem 2rem;
+  }
+
+  /* Formularios y filtros en dos columnas */
+  form,
+  #filtros-productos,
+  #filtros-movimientos {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Elementos que ocupan las dos columnas */
+  form button[type="submit"],
+  #btn-cancelar-producto,
+  #movimiento-observacion,
+  label:has(#movimiento-observacion),
+  #buscador-productos {
+    grid-column: 1 / -1;
+  }
+
+  /* Listas en dos columnas */
+  ul {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* 12b. CELULAR (menos de 600 px): menú fijo abajo, cómodo para el pulgar */
+@media (max-width: 599px) {
+  /* Deja espacio al final para que la barra fija no tape el contenido */
+  body {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  #menu {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    gap: 0;
+    padding: 0.25rem 0.25rem calc(0.25rem + env(safe-area-inset-bottom));
+    overflow-x: visible;
+    border-top: 1px solid var(--color-borde);
+    border-bottom: none;
+    box-shadow: 0 -2px 10px rgba(31, 41, 51, 0.12);
+  }
+
+  /* Cada botón ocupa el mismo ancho, con el emoji arriba y el texto abajo */
+  #menu button {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    padding: 0.3rem 0.2rem;
+    font-size: 0.72rem;
+    background: transparent;
+  }
+
+  #menu button::before {
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  /* Sin efecto hover en el menú: en el celular el hover queda "pegado" después de tocar */
+  #menu button:hover {
+    background: transparent;
+    color: var(--color-texto);
+    transform: none;
+    box-shadow: none;
+  }
+
+  #menu button.activo,
+  #menu button.activo:hover {
+    background: var(--color-principal-suave);
+  }
+
+  /* El contador de alertas se apoya sobre la esquina del emoji */
+  #contador-alertas {
+    position: absolute;
+    top: 2px;
+    left: calc(50% + 0.6rem);
+    margin: 0;
+  }
+}
+
+/* Botón de imprimir en Alertas */
+#btn-imprimir-reposicion {
+  margin-bottom: 1rem;
+}
+
+/* 13. IMPRESIÓN: la zona de reposición está oculta en pantalla y solo se usa al imprimir */
+#zona-impresion {
+  display: none;
+}
+
+@media print {
+  /* Se oculta todo menos la lista de reposición (solo cuando se apretó el botón) */
+  body.imprimiendo {
+    background: #FFFFFF;
+  }
+
+  body.imprimiendo > *:not(#zona-impresion) {
+    display: none !important;
+  }
+
+  body.imprimiendo #zona-impresion {
+    display: block;
+    padding: 1rem;
+  }
+
+  #zona-impresion h2 {
+    margin-bottom: 0.25rem;
+  }
+
+  #zona-impresion p {
+    margin-bottom: 1rem;
+  }
+
+  /* Tabla simple en blanco y negro, sin sombras */
+  #zona-impresion table {
+    display: table;
+    width: 100%;
+    box-shadow: none;
+    border-collapse: collapse;
+  }
+
+  #zona-impresion th,
+  #zona-impresion td {
+    border: 1px solid #000000;
+    white-space: normal;
+    background: #FFFFFF;
+  }
+
+  #zona-impresion .casillero {
+    width: 6rem;
+    text-align: center;
+  }
+
+  /* Casillero para tildar a mano */
+  .casillero-caja {
+    display: inline-block;
+    width: 1.2rem;
+    height: 1.2rem;
+    border: 2px solid #000000;
+  }
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- ENCABEZADO: nombre del sistema y botones de exportar / importar -->
+  <header id="encabezado">
+    <h1>Súper Barrio</h1>
+
+    <div id="acciones-datos">
+      <button type="button" id="btn-exportar">Exportar</button>
+      <button type="button" id="btn-importar">Importar</button>
+      <!-- Input oculto: el botón "Importar" lo va a activar desde JS -->
+      <input type="file" id="archivo-importar" accept=".json" hidden>
+    </div>
+  </header>
+
+  <!-- MENÚ PRINCIPAL: cada botón mostrará su sección (data-seccion) -->
+  <nav id="menu">
+    <button type="button" data-seccion="productos">Productos</button>
+    <button type="button" data-seccion="movimientos">Movimientos</button>
+    <button type="button" data-seccion="alertas">
+      Alertas <span id="contador-alertas">0</span>
+    </button>
+    <button type="button" data-seccion="categorias">Categorías</button>
+  </nav>
+
+  <main>
+
+    <!-- ========== SECCIÓN PRODUCTOS ========== -->
+    <section id="productos">
+      <h2>Productos</h2>
+
+      <!-- Formulario para dar de alta un producto -->
+      <form id="form-producto">
+        <label>Código
+          <input type="text" id="producto-codigo" inputmode="numeric" required>
+        </label>
+
+        <label>Nombre
+          <input type="text" id="producto-nombre" required>
+        </label>
+
+        <label>Categoría
+          <!-- Las opciones se cargarán desde JS con las categorías creadas -->
+          <select id="producto-categoria" required>
+            <option value="">Seleccionar...</option>
+          </select>
+        </label>
+
+        <label>Unidad
+          <select id="producto-unidad" required>
+            <option value="unidad">Unidad</option>
+            <option value="kg">Kilogramo</option>
+            <option value="litro">Litro</option>
+            <option value="paquete">Paquete</option>
+            <option value="caja">Caja</option>
+          </select>
+        </label>
+
+        <label>Precio
+          <input type="number" id="producto-precio" min="0.01" step="0.01" inputmode="decimal" required>
+        </label>
+
+        <label>Stock inicial
+          <input type="number" id="producto-stock-inicial" min="0" step="1" inputmode="numeric" required>
+        </label>
+
+        <label>Stock mínimo
+          <input type="number" id="producto-stock-minimo" min="0" step="1" inputmode="numeric" required>
+        </label>
+
+        <button type="submit" id="btn-guardar-producto">Guardar producto</button>
+        <button type="button" id="btn-cancelar-producto" class="boton-secundario" hidden>Cancelar edición</button>
+      </form>
+
+      <!-- Buscador y filtros -->
+      <div id="filtros-productos">
+        <input type="search" id="buscador-productos" placeholder="Buscar por código o nombre">
+
+        <select id="filtro-categoria">
+          <option value="">Todas las categorías</option>
+        </select>
+
+        <select id="filtro-estado">
+          <option value="">Todos los estados</option>
+          <option value="normal">Normal</option>
+          <option value="bajo">Stock bajo</option>
+          <option value="sin-stock">Sin stock</option>
+        </select>
+      </div>
+
+      <!-- Tabla de productos (el cuerpo se llena desde JS) -->
+      <table id="tabla-productos">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Precio</th>
+            <th>Stock actual</th>
+            <th>Stock mínimo</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo-productos"></tbody>
+      </table>
+    </section>
+
+    <!-- ========== SECCIÓN MOVIMIENTOS ========== -->
+    <section id="movimientos" hidden>
+      <h2>Movimientos</h2>
+
+      <!-- Formulario para registrar una entrada o salida de stock -->
+      <form id="form-movimiento">
+        <label>Código del producto
+          <input type="text" id="movimiento-codigo" inputmode="numeric" required>
+          <small id="info-producto-movimiento"></small>
+        </label>
+
+        <label>Tipo
+          <select id="movimiento-tipo" required>
+            <option value="entrada">Entrada</option>
+            <option value="salida">Salida</option>
+          </select>
+        </label>
+
+        <label>Motivo
+          <select id="movimiento-motivo" required>
+            <option value="compra">Compra a proveedor</option>
+            <option value="venta">Venta</option>
+            <option value="devolucion">Devolución</option>
+            <option value="merma">Merma / vencimiento</option>
+            <option value="ajuste">Ajuste de inventario</option>
+          </select>
+        </label>
+
+        <label>Cantidad
+          <input type="number" id="movimiento-cantidad" min="1" step="1" inputmode="numeric" required>
+        </label>
+
+        <label>Fecha
+          <input type="date" id="movimiento-fecha" required>
+        </label>
+
+        <label>Observación
+          <textarea id="movimiento-observacion" rows="2"></textarea>
+        </label>
+
+        <button type="submit">Registrar movimiento</button>
+      </form>
+
+      <!-- Filtro del historial por producto -->
+      <div id="filtros-movimientos">
+        <select id="filtro-movimientos-producto">
+          <option value="">Todos los productos</option>
+        </select>
+      </div>
+
+      <!-- Historial de movimientos -->
+      <table id="tabla-movimientos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Código</th>
+            <th>Producto</th>
+            <th>Tipo</th>
+            <th>Motivo</th>
+            <th>Cantidad</th>
+            <th>Observación</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo-movimientos"></tbody>
+      </table>
+    </section>
+
+    <!-- ========== SECCIÓN ALERTAS ========== -->
+    <section id="alertas" hidden>
+      <h2>Alertas</h2>
+      <button type="button" id="btn-imprimir-reposicion">🖨️ Imprimir lista de reposición</button>
+
+      <!-- Lista de productos con stock bajo o sin stock (se llena desde JS) -->
+      <ul id="lista-alertas"></ul>
+    </section>
+
+    <!-- ========== SECCIÓN CATEGORÍAS ========== -->
+    <section id="categorias" hidden>
+      <h2>Categorías</h2>
+
+      <!-- Formulario para crear una categoría -->
+      <form id="form-categoria">
+        <label>Nombre de la categoría
+          <input type="text" id="categoria-nombre" required>
+        </label>
+        <button type="submit">Agregar categoría</button>
+      </form>
+
+      <!-- Lista de categorías (se llena desde JS) -->
+      <ul id="lista-categorias"></ul>
+    </section>
+
+  </main>
+
+  <!-- Zona de impresión: oculta en pantalla, se muestra solo al imprimir la lista de reposición -->
+  <section id="zona-impresion">
+    <h2>Súper Barrio · Lista de reposición</h2>
+    <p id="fecha-reposicion"></p>
+    <table id="tabla-reposicion">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Cantidad sugerida</th>
+          <th>Repuesto</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpo-reposicion"></tbody>
+    </table>
+  </section>
+
+  <!-- Lógica integrada -->
+  <script>
+/* ==========================================================
+   Súper Barrio - Lógica del sistema de stock
+   ========================================================== */
+
+/* [Acá va tu comentario de registro de IA: app.js no existía, así que pegalo en esta línea] */
+
+/* ---------- 1. DATOS Y ALMACENAMIENTO ---------- */
+
+// Clave con la que se guardan todos los datos en localStorage
+const CLAVE_ALMACENAMIENTO = "stock-datos";
+
+// Arrays principales de la aplicación
+// categorias:  { nombre }
+// productos:   { codigo, nombre, categoria, unidad, precio, stockInicial, stockMinimo }
+// movimientos: { codigo, tipo, motivo, cantidad, fecha, observacion }
+let categorias = [];
+let productos = [];
+let movimientos = [];
+
+// Guarda los tres arrays juntos en localStorage
+function guardarDatos() {
+  const datos = { categorias, productos, movimientos };
+  localStorage.setItem(CLAVE_ALMACENAMIENTO, JSON.stringify(datos));
+}
+
+// Carga los datos guardados; si no hay nada, usa los datos iniciales
+function cargarDatos() {
+  let datosGuardados = null;
+
+  try {
+    datosGuardados = JSON.parse(localStorage.getItem(CLAVE_ALMACENAMIENTO));
+  } catch (error) {
+    datosGuardados = null; // Si el JSON está dañado, se parte de cero
+  }
+
+  if (datosGuardados) {
+    categorias = datosGuardados.categorias || [];
+    productos = datosGuardados.productos || [];
+    movimientos = datosGuardados.movimientos || [];
+  } else {
+    cargarDatosIniciales();
+    guardarDatos();
+  }
+}
+
+// Datos ficticios para la primera vez que se abre el sistema
+function cargarDatosIniciales() {
+  categorias = [
+    { nombre: "Almacén" },
+    { nombre: "Lácteos" },
+    { nombre: "Limpieza" },
+    { nombre: "Bebidas" }
+  ];
+
+  productos = [
+    { codigo: "7791234500011", nombre: "Arroz largo fino 1 kg",   categoria: "Almacén",  unidad: "paquete", precio: 1850, stockInicial: 40, stockMinimo: 10 },
+    { codigo: "7791234500028", nombre: "Fideos spaghetti 500 g",  categoria: "Almacén",  unidad: "paquete", precio: 1200, stockInicial: 6,  stockMinimo: 15 },
+    { codigo: "7791234500035", nombre: "Leche entera 1 L",        categoria: "Lácteos",  unidad: "litro",   precio: 1450, stockInicial: 30, stockMinimo: 12 },
+    { codigo: "7791234500042", nombre: "Yogur firme vainilla",    categoria: "Lácteos",  unidad: "unidad",  precio: 980,  stockInicial: 0,  stockMinimo: 8 },
+    { codigo: "7791234500059", nombre: "Queso cremoso",           categoria: "Lácteos",  unidad: "kg",      precio: 7800, stockInicial: 12, stockMinimo: 4 },
+    { codigo: "7791234500066", nombre: "Lavandina 1 L",           categoria: "Limpieza", unidad: "unidad",  precio: 1100, stockInicial: 25, stockMinimo: 6 },
+    { codigo: "7791234500073", nombre: "Detergente 750 ml",       categoria: "Limpieza", unidad: "unidad",  precio: 2300, stockInicial: 18, stockMinimo: 8 },
+    { codigo: "7791234500080", nombre: "Gaseosa cola 2,25 L",     categoria: "Bebidas",  unidad: "unidad",  precio: 2900, stockInicial: 48, stockMinimo: 20 }
+  ];
+
+  movimientos = [];
+}
+
+/* ---------- 2. CATEGORÍAS: ALTA, EDICIÓN Y BAJA ---------- */
+
+// Elementos del HTML que usa esta sección
+const formularioCategoria = document.getElementById("form-categoria");
+const campoNombreCategoria = document.getElementById("categoria-nombre");
+const listaCategorias = document.getElementById("lista-categorias");
+
+// Busca si ya existe una categoría con ese nombre (sin distinguir mayúsculas)
+// "ignorarNombre" permite excluir la categoría que se está editando
+function existeCategoria(nombre, ignorarNombre = "") {
+  return categorias.some(function (categoria) {
+    return (
+      categoria.nombre.toLowerCase() === nombre.toLowerCase() &&
+      categoria.nombre.toLowerCase() !== ignorarNombre.toLowerCase()
+    );
+  });
+}
+
+// Valida el nombre: obligatorio y único. Devuelve un mensaje de error o "" si está bien
+function validarNombreCategoria(nombre, ignorarNombre = "") {
+  if (nombre === "") {
+    return "El nombre de la categoría es obligatorio.";
+  }
+  if (existeCategoria(nombre, ignorarNombre)) {
+    return "Ya existe una categoría con ese nombre.";
+  }
+  return "";
+}
+
+// ALTA: agrega una categoría nueva
+function agregarCategoria(nombre) {
+  const mensajeError = validarNombreCategoria(nombre);
+  if (mensajeError) {
+    alert(mensajeError);
+    return false;
+  }
+
+  categorias.push({ nombre: nombre });
+  guardarDatos();
+  mostrarCategorias();
+  return true;
+}
+
+// EDICIÓN: cambia el nombre y actualiza los productos que la usaban
+function editarCategoria(nombreActual) {
+  const nombreNuevo = prompt("Nuevo nombre de la categoría:", nombreActual);
+
+  if (nombreNuevo === null) return; // Canceló la edición
+
+  const nombreLimpio = nombreNuevo.trim();
+  const mensajeError = validarNombreCategoria(nombreLimpio, nombreActual);
+  if (mensajeError) {
+    alert(mensajeError);
+    return;
+  }
+
+  // Cambia el nombre en la categoría
+  const categoria = categorias.find(function (c) {
+    return c.nombre === nombreActual;
+  });
+  categoria.nombre = nombreLimpio;
+
+  // Cambia el nombre también en los productos que la tenían asignada
+  productos.forEach(function (producto) {
+    if (producto.categoria === nombreActual) {
+      producto.categoria = nombreLimpio;
+    }
+  });
+
+  guardarDatos();
+  mostrarCategorias();
+  mostrarProductos();
+}
+
+// BAJA: elimina la categoría solo si no tiene productos
+function eliminarCategoria(nombre) {
+  const tieneProductos = productos.some(function (producto) {
+    return producto.categoria === nombre;
+  });
+
+  if (tieneProductos) {
+    alert("No se puede eliminar \"" + nombre + "\" porque tiene productos asignados.");
+    return;
+  }
+
+  if (!confirm("¿Eliminar la categoría \"" + nombre + "\"?")) return;
+
+  categorias = categorias.filter(function (categoria) {
+    return categoria.nombre !== nombre;
+  });
+
+  guardarDatos();
+  mostrarCategorias();
+}
+
+// Dibuja la lista de categorías y actualiza los selectores de productos
+function mostrarCategorias() {
+  listaCategorias.innerHTML = "";
+
+  categorias.forEach(function (categoria) {
+    const elemento = document.createElement("li");
+
+    const textoNombre = document.createElement("span");
+    textoNombre.textContent = categoria.nombre;
+
+    const botonEditar = document.createElement("button");
+    botonEditar.type = "button";
+    botonEditar.textContent = "✏️ Editar";
+    botonEditar.dataset.accion = "editar";
+    botonEditar.dataset.nombre = categoria.nombre;
+
+    const botonEliminar = document.createElement("button");
+    botonEliminar.type = "button";
+    botonEliminar.textContent = "🗑️ Eliminar";
+    botonEliminar.className = "boton-peligro";
+    botonEliminar.dataset.accion = "eliminar";
+    botonEliminar.dataset.nombre = categoria.nombre;
+
+    elemento.append(textoNombre, botonEditar, botonEliminar);
+    listaCategorias.appendChild(elemento);
+  });
+
+  actualizarSelectoresCategoria();
+}
+
+// Rellena los selectores de categoría (formulario de productos y filtro)
+function actualizarSelectoresCategoria() {
+  const selectorProducto = document.getElementById("producto-categoria");
+  const selectorFiltro = document.getElementById("filtro-categoria");
+
+  // Guarda lo que estaba seleccionado para no perderlo al redibujar
+  const valorProducto = selectorProducto.value;
+  const valorFiltro = selectorFiltro.value;
+
+  selectorProducto.innerHTML = '<option value="">Seleccionar...</option>';
+  selectorFiltro.innerHTML = '<option value="">Todas las categorías</option>';
+
+  categorias.forEach(function (categoria) {
+    selectorProducto.add(new Option(categoria.nombre, categoria.nombre));
+    selectorFiltro.add(new Option(categoria.nombre, categoria.nombre));
+  });
+
+  selectorProducto.value = valorProducto;
+  selectorFiltro.value = valorFiltro;
+  if (selectorProducto.selectedIndex === -1) selectorProducto.value = "";
+  if (selectorFiltro.selectedIndex === -1) selectorFiltro.value = "";
+}
+
+// Alta: al enviar el formulario se agrega la categoría
+formularioCategoria.addEventListener("submit", function (evento) {
+  evento.preventDefault(); // Evita que la página se recargue
+
+  const agregada = agregarCategoria(campoNombreCategoria.value.trim());
+  if (agregada) {
+    formularioCategoria.reset();
+  }
+});
+
+// Edición y baja: un solo "escuchador" para los botones de toda la lista
+listaCategorias.addEventListener("click", function (evento) {
+  const boton = evento.target.closest("button");
+  if (!boton) return;
+
+  if (boton.dataset.accion === "editar") {
+    editarCategoria(boton.dataset.nombre);
+  } else if (boton.dataset.accion === "eliminar") {
+    eliminarCategoria(boton.dataset.nombre);
+  }
+});
+
+/* ---------- 3. PRODUCTOS: ALTA, LISTADO, EDICIÓN Y BAJA ---------- */
+
+// Elementos del HTML que usa esta sección
+const formularioProducto = document.getElementById("form-producto");
+const campoCodigoProducto = document.getElementById("producto-codigo");
+const campoNombreProducto = document.getElementById("producto-nombre");
+const campoCategoriaProducto = document.getElementById("producto-categoria");
+const campoUnidadProducto = document.getElementById("producto-unidad");
+const campoPrecioProducto = document.getElementById("producto-precio");
+const campoStockInicialProducto = document.getElementById("producto-stock-inicial");
+const campoStockMinimoProducto = document.getElementById("producto-stock-minimo");
+const botonGuardarProducto = document.getElementById("btn-guardar-producto");
+const botonCancelarProducto = document.getElementById("btn-cancelar-producto");
+const cuerpoProductos = document.getElementById("cuerpo-productos");
+const buscadorProductos = document.getElementById("buscador-productos");
+const filtroCategoriaProducto = document.getElementById("filtro-categoria");
+const filtroEstadoProducto = document.getElementById("filtro-estado");
+
+// Código del producto que se está editando (null cuando se está dando de alta)
+let codigoEnEdicion = null;
+
+// Formato de precios en pesos argentinos
+const formatoPrecio = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
+
+// Textos que se muestran para cada estado
+const ETIQUETAS_ESTADO = {
+  "sin-stock": "Sin stock",
+  "bajo": "Stock bajo",
+  "normal": "Normal"
+};
+
+// Stock actual = stock inicial + entradas - salidas (solo cambia con movimientos)
+function calcularStockActual(producto) {
+  let stock = producto.stockInicial;
+
+  movimientos.forEach(function (movimiento) {
+    if (movimiento.codigo === producto.codigo) {
+      if (movimiento.tipo === "entrada") {
+        stock += Number(movimiento.cantidad);
+      } else if (movimiento.tipo === "salida") {
+        stock -= Number(movimiento.cantidad);
+      }
+    }
+  });
+
+  return stock;
+}
+
+// Estado: "sin-stock" si es 0, "bajo" si es menor o igual al mínimo, "normal" en otro caso
+function calcularEstado(stockActual, stockMinimo) {
+  if (stockActual <= 0) return "sin-stock";
+  if (stockActual <= stockMinimo) return "bajo";
+  return "normal";
+}
+
+// Valida los datos del formulario (llegan como texto). Devuelve un mensaje de error o ""
+function validarProducto(datos, enEdicion) {
+  // Código: de 8 a 13 dígitos y único (en edición el código no se cambia)
+  if (!/^\d{8,13}$/.test(datos.codigo)) {
+    return "El código debe tener entre 8 y 13 dígitos (solo números).";
+  }
+  if (!enEdicion) {
+    const codigoRepetido = productos.some(function (producto) {
+      return producto.codigo === datos.codigo;
+    });
+    if (codigoRepetido) {
+      return "Ya existe un producto con ese código.";
+    }
+  }
+
+  // Nombre obligatorio
+  if (datos.nombre === "") {
+    return "El nombre del producto es obligatorio.";
+  }
+
+  // Categoría elegida
+  if (datos.categoria === "") {
+    return "Elegí una categoría.";
+  }
+
+  // Precio mayor que cero
+  if (datos.precio === "" || !(Number(datos.precio) > 0)) {
+    return "El precio debe ser mayor que cero.";
+  }
+
+  // Stock inicial entero no negativo (solo se valida en el alta)
+  if (!enEdicion && !/^\d+$/.test(datos.stockInicial)) {
+    return "El stock inicial debe ser un número entero, cero o mayor.";
+  }
+
+  // Stock mínimo entero no negativo
+  if (!/^\d+$/.test(datos.stockMinimo)) {
+    return "El stock mínimo debe ser un número entero, cero o mayor.";
+  }
+
+  return "";
+}
+
+// Deja el formulario en modo "alta" (vacío y con todos los campos habilitados)
+function limpiarFormularioProducto() {
+  codigoEnEdicion = null;
+  formularioProducto.reset();
+  campoCodigoProducto.readOnly = false;
+  campoStockInicialProducto.disabled = false;
+  campoStockInicialProducto.title = "";
+  botonGuardarProducto.textContent = "Guardar producto";
+  botonCancelarProducto.hidden = true;
+}
+
+// Alta y edición: se decide según haya o no un producto en edición
+formularioProducto.addEventListener("submit", function (evento) {
+  evento.preventDefault();
+
+  const enEdicion = codigoEnEdicion !== null;
+
+  const datos = {
+    codigo: campoCodigoProducto.value.trim(),
+    nombre: campoNombreProducto.value.trim(),
+    categoria: campoCategoriaProducto.value,
+    unidad: campoUnidadProducto.value,
+    precio: campoPrecioProducto.value.trim(),
+    stockInicial: campoStockInicialProducto.value.trim(),
+    stockMinimo: campoStockMinimoProducto.value.trim()
+  };
+
+  const mensajeError = validarProducto(datos, enEdicion);
+  if (mensajeError) {
+    alert(mensajeError);
+    return;
+  }
+
+  if (enEdicion) {
+    // EDICIÓN: no se tocan el código ni el stock inicial (el stock solo cambia con movimientos)
+    const producto = productos.find(function (p) {
+      return p.codigo === codigoEnEdicion;
+    });
+    producto.nombre = datos.nombre;
+    producto.categoria = datos.categoria;
+    producto.unidad = datos.unidad;
+    producto.precio = Number(datos.precio);
+    producto.stockMinimo = Number(datos.stockMinimo);
+  } else {
+    // ALTA: se agrega el producto nuevo
+    productos.push({
+      codigo: datos.codigo,
+      nombre: datos.nombre,
+      categoria: datos.categoria,
+      unidad: datos.unidad,
+      precio: Number(datos.precio),
+      stockInicial: Number(datos.stockInicial),
+      stockMinimo: Number(datos.stockMinimo)
+    });
+  }
+
+  guardarDatos();
+  limpiarFormularioProducto();
+  mostrarProductos();
+});
+
+// Cancelar edición: vuelve el formulario al modo alta
+botonCancelarProducto.addEventListener("click", limpiarFormularioProducto);
+
+// EDICIÓN: carga el producto en el formulario
+function iniciarEdicionProducto(codigo) {
+  const producto = productos.find(function (p) {
+    return p.codigo === codigo;
+  });
+
+  codigoEnEdicion = codigo;
+  campoCodigoProducto.value = producto.codigo;
+  campoNombreProducto.value = producto.nombre;
+  campoCategoriaProducto.value = producto.categoria;
+  campoUnidadProducto.value = producto.unidad;
+  campoPrecioProducto.value = producto.precio;
+  campoStockInicialProducto.value = producto.stockInicial;
+  campoStockMinimoProducto.value = producto.stockMinimo;
+
+  // El código y el stock inicial no se pueden cambiar al editar
+  campoCodigoProducto.readOnly = true;
+  campoStockInicialProducto.disabled = true;
+  campoStockInicialProducto.title = "El stock actual solo cambia con movimientos";
+
+  botonGuardarProducto.textContent = "Guardar cambios";
+  botonCancelarProducto.hidden = false;
+  formularioProducto.scrollIntoView({ behavior: "smooth" });
+}
+
+// BAJA: elimina el producto después de pedir confirmación
+function eliminarProducto(codigo) {
+  const producto = productos.find(function (p) {
+    return p.codigo === codigo;
+  });
+
+  if (!confirm("¿Eliminar el producto \"" + producto.nombre + "\"?")) return;
+
+  productos = productos.filter(function (p) {
+    return p.codigo !== codigo;
+  });
+
+  // Si justo se estaba editando ese producto, se limpia el formulario
+  if (codigoEnEdicion === codigo) {
+    limpiarFormularioProducto();
+  }
+
+  guardarDatos();
+  mostrarProductos();
+}
+
+// Agrega una celda con texto a una fila de la tabla
+function agregarCelda(fila, texto) {
+  const celda = document.createElement("td");
+  celda.textContent = texto;
+  fila.appendChild(celda);
+  return celda;
+}
+
+// Quita tildes y pasa a minúsculas para comparar textos (ej: "Fídeos" -> "fideos")
+function normalizarTexto(texto) {
+  return String(texto).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+// Decide si un producto se muestra: la búsqueda, la categoría y el estado deben cumplirse juntos
+function cumpleFiltrosProductos(producto, estado) {
+  const busqueda = normalizarTexto(buscadorProductos.value.trim());
+
+  // Búsqueda por código o nombre
+  if (busqueda !== "") {
+    const coincide =
+      normalizarTexto(producto.codigo).includes(busqueda) ||
+      normalizarTexto(producto.nombre).includes(busqueda);
+    if (!coincide) return false;
+  }
+
+  // Filtro por categoría ("" = todas)
+  if (filtroCategoriaProducto.value !== "" && producto.categoria !== filtroCategoriaProducto.value) {
+    return false;
+  }
+
+  // Filtro por estado ("" = todos)
+  if (filtroEstadoProducto.value !== "" && estado !== filtroEstadoProducto.value) {
+    return false;
+  }
+
+  return true;
+}
+
+// La tabla se actualiza en vivo al escribir o cambiar un filtro
+buscadorProductos.addEventListener("input", mostrarProductos);
+filtroCategoriaProducto.addEventListener("change", mostrarProductos);
+filtroEstadoProducto.addEventListener("change", mostrarProductos);
+
+// LISTADO: dibuja la tabla de productos (solo los que cumplen la búsqueda y los filtros)
+function mostrarProductos() {
+  cuerpoProductos.innerHTML = "";
+
+  productos.forEach(function (producto) {
+    const stockActual = calcularStockActual(producto);
+    const estado = calcularEstado(stockActual, producto.stockMinimo);
+
+    // Si no cumple la búsqueda o los filtros, no se dibuja
+    if (!cumpleFiltrosProductos(producto, estado)) return;
+
+    const fila = document.createElement("tr");
+
+    agregarCelda(fila, producto.codigo);
+    agregarCelda(fila, producto.nombre);
+    agregarCelda(fila, producto.categoria);
+    agregarCelda(fila, formatoPrecio.format(producto.precio));
+    agregarCelda(fila, stockActual);
+    agregarCelda(fila, producto.stockMinimo);
+
+    // Celda de estado con indicador de color (las clases están en el CSS)
+    const celdaEstado = agregarCelda(fila, "");
+    const indicador = document.createElement("span");
+    indicador.className = "estado estado-" + estado;
+    indicador.textContent = ETIQUETAS_ESTADO[estado];
+    celdaEstado.appendChild(indicador);
+
+    // Celda de acciones: editar y eliminar
+    const celdaAcciones = document.createElement("td");
+
+    const botonEditar = document.createElement("button");
+    botonEditar.type = "button";
+    botonEditar.textContent = "✏️ Editar";
+    botonEditar.dataset.accion = "editar";
+    botonEditar.dataset.codigo = producto.codigo;
+
+    const botonEliminar = document.createElement("button");
+    botonEliminar.type = "button";
+    botonEliminar.textContent = "🗑️ Eliminar";
+    botonEliminar.className = "boton-peligro";
+    botonEliminar.dataset.accion = "eliminar";
+    botonEliminar.dataset.codigo = producto.codigo;
+
+    celdaAcciones.append(botonEditar, " ", botonEliminar);
+    fila.appendChild(celdaAcciones);
+
+    cuerpoProductos.appendChild(fila);
+  });
+
+  // Los productos cambiaron: se actualizan el filtro, el historial y la info de movimientos
+  actualizarFiltroMovimientos();
+  mostrarMovimientos();
+  actualizarInfoProductoMovimiento();
+  mostrarAlertas();
+}
+
+// Un solo "escuchador" para los botones de toda la tabla
+cuerpoProductos.addEventListener("click", function (evento) {
+  const boton = evento.target.closest("button");
+  if (!boton) return;
+
+  if (boton.dataset.accion === "editar") {
+    iniciarEdicionProducto(boton.dataset.codigo);
+  } else if (boton.dataset.accion === "eliminar") {
+    eliminarProducto(boton.dataset.codigo);
+  }
+});
+
+/* ---------- 4. MOVIMIENTOS: REGISTRO E HISTORIAL ---------- */
+
+// Elementos del HTML que usa esta sección
+const formularioMovimiento = document.getElementById("form-movimiento");
+const campoCodigoMovimiento = document.getElementById("movimiento-codigo");
+const campoTipoMovimiento = document.getElementById("movimiento-tipo");
+const campoMotivoMovimiento = document.getElementById("movimiento-motivo");
+const campoCantidadMovimiento = document.getElementById("movimiento-cantidad");
+const campoFechaMovimiento = document.getElementById("movimiento-fecha");
+const campoObservacionMovimiento = document.getElementById("movimiento-observacion");
+const infoProductoMovimiento = document.getElementById("info-producto-movimiento");
+const filtroMovimientosProducto = document.getElementById("filtro-movimientos-producto");
+const cuerpoMovimientos = document.getElementById("cuerpo-movimientos");
+
+// Textos que se muestran para cada motivo
+const ETIQUETAS_MOTIVO = {
+  compra: "Compra a proveedor",
+  venta: "Venta",
+  devolucion: "Devolución",
+  merma: "Merma / vencimiento",
+  ajuste: "Ajuste de inventario"
+};
+
+// Devuelve la fecha de hoy como "AAAA-MM-DD" (hora local)
+function obtenerFechaHoy() {
+  const hoy = new Date();
+  const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoy.getDate()).padStart(2, "0");
+  return hoy.getFullYear() + "-" + mes + "-" + dia;
+}
+
+// Comprueba que el texto "AAAA-MM-DD" sea una fecha real (ej: rechaza 2026-02-30)
+function esFechaValida(texto) {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
+  if (!partes) return false;
+
+  const anio = Number(partes[1]);
+  const mes = Number(partes[2]);
+  const dia = Number(partes[3]);
+  const fecha = new Date(anio, mes - 1, dia);
+
+  return (
+    fecha.getFullYear() === anio &&
+    fecha.getMonth() === mes - 1 &&
+    fecha.getDate() === dia
+  );
+}
+
+// Pasa "AAAA-MM-DD" a "DD/MM/AAAA" para mostrarla
+function formatearFecha(texto) {
+  const partes = texto.split("-");
+  return partes[2] + "/" + partes[1] + "/" + partes[0];
+}
+
+// Busca un producto por su código
+function buscarProductoPorCodigo(codigo) {
+  return productos.find(function (producto) {
+    return producto.codigo === codigo;
+  });
+}
+
+// La fecha empieza en hoy y no se puede elegir una futura
+function iniciarFechaMovimiento() {
+  campoFechaMovimiento.max = obtenerFechaHoy();
+  campoFechaMovimiento.value = obtenerFechaHoy();
+}
+
+// Al escribir el código: muestra el nombre y el stock actual, o "Producto no encontrado"
+function actualizarInfoProductoMovimiento() {
+  const codigo = campoCodigoMovimiento.value.trim();
+  infoProductoMovimiento.classList.remove("info-no-encontrado");
+
+  if (codigo === "") {
+    infoProductoMovimiento.textContent = "";
+    return;
+  }
+
+  const producto = buscarProductoPorCodigo(codigo);
+  if (!producto) {
+    infoProductoMovimiento.textContent = "Producto no encontrado";
+    infoProductoMovimiento.classList.add("info-no-encontrado");
+    return;
+  }
+
+  infoProductoMovimiento.textContent =
+    producto.nombre + " · Stock actual: " + calcularStockActual(producto);
+}
+
+campoCodigoMovimiento.addEventListener("input", actualizarInfoProductoMovimiento);
+
+// Enter en el código: no envía el formulario, pasa el foco a la cantidad
+campoCodigoMovimiento.addEventListener("keydown", function (evento) {
+  if (evento.key === "Enter") {
+    evento.preventDefault();
+    campoCantidadMovimiento.focus();
+  }
+});
+
+// Valida el movimiento. Devuelve un mensaje de error o "" si está todo bien
+function validarMovimiento(datos, producto) {
+  if (!producto) {
+    return "Producto no encontrado. Revisá el código.";
+  }
+
+  // Cantidad entera mayor que cero
+  if (!/^\d+$/.test(datos.cantidad) || Number(datos.cantidad) <= 0) {
+    return "La cantidad debe ser un número entero mayor que cero.";
+  }
+
+  // Fecha válida y no futura
+  if (!esFechaValida(datos.fecha)) {
+    return "La fecha no es válida.";
+  }
+  if (datos.fecha > obtenerFechaHoy()) {
+    return "La fecha no puede ser futura.";
+  }
+
+  // Una salida no puede dejar el stock negativo
+  if (datos.tipo === "salida") {
+    const stockActual = calcularStockActual(producto);
+    if (Number(datos.cantidad) > stockActual) {
+      return "Stock insuficiente: hay " + stockActual + " y la salida es de " + datos.cantidad + ".";
+    }
+  }
+
+  return "";
+}
+
+// Registro: guarda el movimiento (el stock actual se recalcula con él)
+formularioMovimiento.addEventListener("submit", function (evento) {
+  evento.preventDefault();
+
+  const datos = {
+    codigo: campoCodigoMovimiento.value.trim(),
+    tipo: campoTipoMovimiento.value,
+    motivo: campoMotivoMovimiento.value,
+    cantidad: campoCantidadMovimiento.value.trim(),
+    fecha: campoFechaMovimiento.value,
+    observacion: campoObservacionMovimiento.value.trim()
+  };
+
+  const producto = buscarProductoPorCodigo(datos.codigo);
+  const mensajeError = validarMovimiento(datos, producto);
+  if (mensajeError) {
+    alert(mensajeError);
+    return;
+  }
+
+  movimientos.push({
+    codigo: datos.codigo,
+    tipo: datos.tipo,
+    motivo: datos.motivo,
+    cantidad: Number(datos.cantidad),
+    fecha: datos.fecha,
+    observacion: datos.observacion
+  });
+
+  guardarDatos();
+  formularioMovimiento.reset();
+  iniciarFechaMovimiento();
+
+  // Actualiza la tabla de productos (stock y estado) y el historial
+  mostrarProductos();
+  campoCodigoMovimiento.focus();
+});
+
+// Rellena el filtro del historial con los productos
+function actualizarFiltroMovimientos() {
+  const valorActual = filtroMovimientosProducto.value;
+
+  filtroMovimientosProducto.innerHTML = '<option value="">Todos los productos</option>';
+  productos.forEach(function (producto) {
+    filtroMovimientosProducto.add(
+      new Option(producto.nombre + " (" + producto.codigo + ")", producto.codigo)
+    );
+  });
+
+  // Mantiene la selección si el producto todavía existe
+  filtroMovimientosProducto.value = valorActual;
+  if (filtroMovimientosProducto.selectedIndex === -1) {
+    filtroMovimientosProducto.value = "";
+  }
+}
+
+// Historial: del más nuevo al más viejo, con filtro por producto
+function mostrarMovimientos() {
+  cuerpoMovimientos.innerHTML = "";
+
+  const codigoFiltro = filtroMovimientosProducto.value;
+
+  // Se guarda la posición original para desempatar movimientos de la misma fecha
+  const lista = movimientos
+    .map(function (movimiento, posicion) {
+      return { movimiento: movimiento, posicion: posicion };
+    })
+    .filter(function (item) {
+      return codigoFiltro === "" || item.movimiento.codigo === codigoFiltro;
+    });
+
+  lista.sort(function (a, b) {
+    if (a.movimiento.fecha !== b.movimiento.fecha) {
+      return a.movimiento.fecha < b.movimiento.fecha ? 1 : -1;
+    }
+    return b.posicion - a.posicion; // Misma fecha: el último registrado primero
+  });
+
+  lista.forEach(function (item) {
+    const movimiento = item.movimiento;
+    const producto = buscarProductoPorCodigo(movimiento.codigo);
+    const fila = document.createElement("tr");
+
+    agregarCelda(fila, formatearFecha(movimiento.fecha));
+    agregarCelda(fila, movimiento.codigo);
+    agregarCelda(fila, producto ? producto.nombre : "Producto eliminado");
+    agregarCelda(fila, movimiento.tipo === "entrada" ? "⬆️ Entrada" : "⬇️ Salida");
+    agregarCelda(fila, ETIQUETAS_MOTIVO[movimiento.motivo] || movimiento.motivo);
+    agregarCelda(fila, movimiento.cantidad);
+    agregarCelda(fila, movimiento.observacion);
+
+    cuerpoMovimientos.appendChild(fila);
+  });
+}
+
+filtroMovimientosProducto.addEventListener("change", mostrarMovimientos);
+
+iniciarFechaMovimiento();
+
+/* ---------- 5. ALERTAS: STOCK EN EL MÍNIMO, BAJO EL MÍNIMO O SIN STOCK ---------- */
+
+// Elementos del HTML que usa esta sección
+const listaAlertas = document.getElementById("lista-alertas");
+const contadorAlertas = document.getElementById("contador-alertas");
+
+// Cantidad sugerida para pedir: el doble del mínimo menos el stock actual
+function calcularCantidadSugerida(stockActual, stockMinimo) {
+  return stockMinimo * 2 - stockActual;
+}
+
+// Arma la lista de productos en alerta, ordenada por urgencia
+function obtenerAlertas() {
+  const alertas = [];
+
+  productos.forEach(function (producto) {
+    const stockActual = calcularStockActual(producto);
+    const estado = calcularEstado(stockActual, producto.stockMinimo);
+
+    // Los productos con estado "normal" no generan alerta
+    if (estado !== "normal") {
+      alertas.push({
+        producto: producto,
+        stockActual: stockActual,
+        estado: estado,
+        // Cobertura: qué parte del mínimo queda (0 = sin nada, 1 = justo en el mínimo)
+        cobertura: producto.stockMinimo > 0 ? stockActual / producto.stockMinimo : 0,
+        cantidadSugerida: calcularCantidadSugerida(stockActual, producto.stockMinimo)
+      });
+    }
+  });
+
+  // Urgencia: primero los sin stock; luego menor cobertura; luego mayor mínimo; luego nombre
+  alertas.sort(function (a, b) {
+    if (a.estado !== b.estado) {
+      return a.estado === "sin-stock" ? -1 : 1;
+    }
+    if (a.cobertura !== b.cobertura) {
+      return a.cobertura - b.cobertura;
+    }
+    if (a.producto.stockMinimo !== b.producto.stockMinimo) {
+      return b.producto.stockMinimo - a.producto.stockMinimo;
+    }
+    return a.producto.nombre.localeCompare(b.producto.nombre);
+  });
+
+  return alertas;
+}
+
+// Dibuja la lista de alertas y actualiza el contador del menú
+function mostrarAlertas() {
+  const alertas = obtenerAlertas();
+
+  contadorAlertas.textContent = alertas.length;
+  listaAlertas.innerHTML = "";
+
+  // Sin alertas: mensaje de que todo está en orden
+  if (alertas.length === 0) {
+    const mensaje = document.createElement("li");
+    mensaje.textContent = "✅ Todo el stock está en orden";
+    listaAlertas.appendChild(mensaje);
+    return;
+  }
+
+  alertas.forEach(function (alerta) {
+    const elemento = document.createElement("li");
+    elemento.className = "alerta-" + alerta.estado;
+
+    // Izquierda: nombre del producto, código y categoría
+    const info = document.createElement("span");
+    info.className = "alerta-info";
+
+    const nombre = document.createElement("strong");
+    nombre.textContent = alerta.producto.nombre;
+
+    const detalleProducto = document.createElement("small");
+    detalleProducto.textContent = alerta.producto.codigo + " · " + alerta.producto.categoria;
+
+    info.append(nombre, detalleProducto);
+
+    // Derecha: estado, stock actual, mínimo y cantidad sugerida
+    const detalle = document.createElement("span");
+    detalle.className = "alerta-detalle";
+
+    const indicador = document.createElement("span");
+    indicador.className = "estado estado-" + alerta.estado;
+    indicador.textContent = ETIQUETAS_ESTADO[alerta.estado];
+
+    const stocks = document.createElement("span");
+    stocks.textContent =
+      "Stock actual: " + alerta.stockActual + " · Mínimo: " + alerta.producto.stockMinimo;
+
+    const pedido = document.createElement("span");
+    pedido.className = "alerta-pedido";
+    pedido.textContent = "Pedir: " + alerta.cantidadSugerida;
+
+    detalle.append(indicador, stocks, pedido);
+
+    elemento.append(info, detalle);
+    listaAlertas.appendChild(elemento);
+  });
+}
+
+// Elementos de la lista de reposición para imprimir
+const botonImprimirReposicion = document.getElementById("btn-imprimir-reposicion");
+const cuerpoReposicion = document.getElementById("cuerpo-reposicion");
+const fechaReposicion = document.getElementById("fecha-reposicion");
+
+// Arma la tabla de reposición (producto, cantidad sugerida y casillero) y abre la impresión
+function imprimirListaReposicion() {
+  const alertas = obtenerAlertas();
+
+  if (alertas.length === 0) {
+    alert("No hay productos para reponer: todo el stock está en orden.");
+    return;
+  }
+
+  cuerpoReposicion.innerHTML = "";
+  fechaReposicion.textContent = "Fecha: " + formatearFecha(obtenerFechaHoy());
+
+  alertas.forEach(function (alerta) {
+    const fila = document.createElement("tr");
+
+    agregarCelda(fila, alerta.producto.nombre + " (" + alerta.producto.codigo + ")");
+    agregarCelda(fila, alerta.cantidadSugerida);
+
+    // Casillero vacío para tildar a mano
+    const celdaCasillero = agregarCelda(fila, "");
+    celdaCasillero.className = "casillero";
+    const caja = document.createElement("span");
+    caja.className = "casillero-caja";
+    celdaCasillero.appendChild(caja);
+
+    cuerpoReposicion.appendChild(fila);
+  });
+
+  // Esta clase activa los estilos de impresión (ocultan el resto de la página)
+  document.body.classList.add("imprimiendo");
+  window.print();
+}
+
+// Al terminar de imprimir (o cancelar) se vuelve a mostrar la página normal
+window.addEventListener("afterprint", function () {
+  document.body.classList.remove("imprimiendo");
+});
+
+botonImprimirReposicion.addEventListener("click", imprimirListaReposicion);
+
+/* ---------- 6. EXPORTAR E IMPORTAR DATOS ---------- */
+
+// Elementos del HTML que usa esta sección
+const botonExportar = document.getElementById("btn-exportar");
+const botonImportar = document.getElementById("btn-importar");
+const archivoImportar = document.getElementById("archivo-importar");
+
+// EXPORTAR: descarga un archivo stock.json con todos los datos
+function exportarDatos() {
+  const datos = { categorias, productos, movimientos };
+
+  // JSON.stringify con sangría de 2 espacios para que sea legible
+  const texto = JSON.stringify(datos, null, 2);
+
+  // Se crea un archivo en memoria (Blob) y un enlace temporal para descargarlo
+  const archivo = new Blob([texto], { type: "application/json" });
+  const direccion = URL.createObjectURL(archivo);
+
+  const enlace = document.createElement("a");
+  enlace.href = direccion;
+  enlace.download = "stock.json";
+
+  document.body.appendChild(enlace);
+  enlace.click();
+  document.body.removeChild(enlace);
+
+  URL.revokeObjectURL(direccion); // Libera la memoria usada por el enlace temporal
+}
+
+// Comprueba que los datos importados tengan las tres listas y el formato esperado.
+// Devuelve un mensaje de error o "" si está todo bien
+function validarDatosImportados(datos) {
+  if (datos === null || typeof datos !== "object" || Array.isArray(datos)) {
+    return "El archivo no tiene el formato esperado.";
+  }
+
+  // Las tres listas son obligatorias
+  const listas = ["categorias", "productos", "movimientos"];
+  for (let i = 0; i < listas.length; i++) {
+    if (!Array.isArray(datos[listas[i]])) {
+      return "Falta la lista \"" + listas[i] + "\" o no es válida.";
+    }
+  }
+
+  // Categorías: nombre obligatorio y único
+  const nombresCategorias = [];
+  for (let i = 0; i < datos.categorias.length; i++) {
+    const categoria = datos.categorias[i];
+    if (!categoria || typeof categoria.nombre !== "string" || categoria.nombre.trim() === "") {
+      return "La categoría " + (i + 1) + " no tiene un nombre válido.";
+    }
+    const nombreNormalizado = categoria.nombre.toLowerCase();
+    if (nombresCategorias.includes(nombreNormalizado)) {
+      return "La categoría \"" + categoria.nombre + "\" está repetida.";
+    }
+    nombresCategorias.push(nombreNormalizado);
+  }
+
+  // Productos: campos completos, código único y categoría existente
+  const codigos = [];
+  for (let i = 0; i < datos.productos.length; i++) {
+    const producto = datos.productos[i];
+    const etiqueta = "El producto " + (i + 1);
+
+    if (!producto || typeof producto.codigo !== "string" || !/^\d{8,13}$/.test(producto.codigo)) {
+      return etiqueta + " no tiene un código válido (8 a 13 dígitos).";
+    }
+    if (codigos.includes(producto.codigo)) {
+      return "El código " + producto.codigo + " está repetido.";
+    }
+    codigos.push(producto.codigo);
+
+    if (typeof producto.nombre !== "string" || producto.nombre.trim() === "") {
+      return etiqueta + " no tiene nombre.";
+    }
+    if (typeof producto.unidad !== "string" || producto.unidad === "") {
+      return etiqueta + " no tiene unidad.";
+    }
+    if (typeof producto.categoria !== "string" ||
+        !nombresCategorias.includes(producto.categoria.toLowerCase())) {
+      return etiqueta + " tiene una categoría que no está en la lista de categorías.";
+    }
+    if (typeof producto.precio !== "number" || !(producto.precio > 0)) {
+      return etiqueta + " tiene un precio inválido.";
+    }
+    if (!Number.isInteger(producto.stockInicial) || producto.stockInicial < 0) {
+      return etiqueta + " tiene un stock inicial inválido.";
+    }
+    if (!Number.isInteger(producto.stockMinimo) || producto.stockMinimo < 0) {
+      return etiqueta + " tiene un stock mínimo inválido.";
+    }
+  }
+
+  // Movimientos: tipo, cantidad y fecha válidos
+  for (let i = 0; i < datos.movimientos.length; i++) {
+    const movimiento = datos.movimientos[i];
+    const etiqueta = "El movimiento " + (i + 1);
+
+    if (!movimiento || typeof movimiento.codigo !== "string") {
+      return etiqueta + " no tiene código de producto.";
+    }
+    if (movimiento.tipo !== "entrada" && movimiento.tipo !== "salida") {
+      return etiqueta + " tiene un tipo inválido.";
+    }
+    if (typeof movimiento.motivo !== "string") {
+      return etiqueta + " no tiene motivo.";
+    }
+    if (!Number.isInteger(movimiento.cantidad) || movimiento.cantidad <= 0) {
+      return etiqueta + " tiene una cantidad inválida.";
+    }
+    if (typeof movimiento.fecha !== "string" || !esFechaValida(movimiento.fecha)) {
+      return etiqueta + " tiene una fecha inválida.";
+    }
+  }
+
+  return "";
+}
+
+// Procesa el texto del archivo elegido. Si algo falla, no se modifica nada
+function importarDatos(texto) {
+  let datos;
+
+  try {
+    datos = JSON.parse(texto);
+  } catch (error) {
+    alert("El archivo no es un JSON válido. No se modificó ningún dato.");
+    return;
+  }
+
+  const mensajeError = validarDatosImportados(datos);
+  if (mensajeError) {
+    alert(mensajeError + " No se modificó ningún dato.");
+    return;
+  }
+
+  // Confirmación antes de reemplazar
+  const confirmado = confirm(
+    "Se van a reemplazar todos los datos actuales por los del archivo (" +
+    datos.categorias.length + " categorías, " +
+    datos.productos.length + " productos y " +
+    datos.movimientos.length + " movimientos). ¿Continuar?"
+  );
+  if (!confirmado) return;
+
+  // Reemplaza los datos (la observación es opcional en el archivo)
+  datos.movimientos.forEach(function (movimiento) {
+    if (typeof movimiento.observacion !== "string") {
+      movimiento.observacion = "";
+    }
+  });
+
+  categorias = datos.categorias;
+  productos = datos.productos;
+  movimientos = datos.movimientos;
+  guardarDatos();
+
+  // Vuelve a dibujar toda la pantalla
+  limpiarFormularioProducto();
+  mostrarCategorias();
+  mostrarProductos(); // También actualiza movimientos, alertas y contador
+
+  alert("Datos importados correctamente.");
+}
+
+// El botón "Importar" abre el selector de archivos
+botonImportar.addEventListener("click", function () {
+  archivoImportar.click();
+});
+
+// Al elegir un archivo, se lee como texto
+archivoImportar.addEventListener("change", function () {
+  const archivo = archivoImportar.files[0];
+  if (!archivo) return;
+
+  const lector = new FileReader();
+
+  lector.onload = function () {
+    importarDatos(lector.result);
+  };
+
+  lector.onerror = function () {
+    alert("No se pudo leer el archivo. No se modificó ningún dato.");
+  };
+
+  lector.readAsText(archivo);
+
+  // Permite volver a elegir el mismo archivo más tarde
+  archivoImportar.value = "";
+});
+
+botonExportar.addEventListener("click", exportarDatos);
+
+/* ---------- 7. MENÚ: CAMBIO DE SECCIÓN ---------- */
+
+// Elementos del HTML que usa esta sección
+const menuPrincipal = document.getElementById("menu");
+
+// Ids de las secciones de la página (coinciden con el data-seccion de cada botón del menú)
+const nombresSecciones = ["productos", "movimientos", "alertas", "categorias"];
+
+// Muestra solo la sección elegida y marca su botón como activo
+function mostrarSeccion(nombre) {
+  nombresSecciones.forEach(function (seccion) {
+    document.getElementById(seccion).hidden = seccion !== nombre;
+  });
+
+  document.querySelectorAll("#menu button").forEach(function (boton) {
+    boton.classList.toggle("activo", boton.dataset.seccion === nombre);
+  });
+}
+
+// Un solo "escuchador" para todos los botones del menú
+menuPrincipal.addEventListener("click", function (evento) {
+  const boton = evento.target.closest("button");
+  if (boton) {
+    mostrarSeccion(boton.dataset.seccion);
+  }
+});
+
+/* ---------- 8. INICIO DE LA APLICACIÓN ---------- */
+
+cargarDatos();
+mostrarCategorias();
+mostrarProductos();
+mostrarSeccion("productos"); // La página arranca en Productos
+
+  </script>
+</body>
+</html>
